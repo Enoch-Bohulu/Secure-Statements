@@ -1,0 +1,30 @@
+# Keep the Docker build context small and deterministic.
+# Excluding bin/obj avoids leaking host build artifacts into the image.
+
+**/bin/
+**/obj/
+**/.vs/
+.git/
+.github/
+.vscode/
+.idea/
+
+# Local runtime data and secrets — never bake these into an image
+data/
+.env
+.env.*
+!.env.example
+
+# Not needed to build/run the API
+tests/
+docs/
+TestResults/
+**/*.user
+**/*.log
+
+# The build doesn't need these files themselves
+Dockerfile
+.dockerignore
+README.md
+e2e-test.sh
+

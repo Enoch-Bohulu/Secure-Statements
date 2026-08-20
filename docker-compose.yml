@@ -1,0 +1,56 @@
+# docker-compose.yml
+# Local development environment for SecureStatements.
+#
+# Secrets are read from a local .env file (see .env.example). Every value has a safe
+# fallback default, so `docker compose up` still works even without a .env file.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: securestatements
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-MYPASSWORD1234!}
+      POSTGRES_DB: securestatements
+    ports:
+      - "5432:5432"
+    volumes:
+      - securestatements-db-data:/var/lib/postgresql/data
+    healthcheck:
+      # Use the SAME user as POSTGRES_USER so the check authenticates correctly.
+      test: ["CMD-SHELL", "pg_isready -U securestatements -d securestatements"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        # Wait until Postgres is healthy: the API applies EF Core migrations on startup
+        # and needs the database reachable.
+        condition: service_healthy
+    environment:
+      # Inside the compose network the database host is the service name "db", not localhost.
+      ConnectionStrings__Database: "Host=db;Port=5432;Database=securestatements;Username=securestatements;Password=${DB_PASSWORD:-MYPASSWORD1234!}"
+      # Issuer/Audience match appsettings.json so tokens minted at jwt.io validate here too.
+      Jwt__Issuer: "https://auth.local.securestatements"
+      Jwt__Audience: "secure-statements-api"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-local-dev-jwt-signing-key-change-me-at-least-32chars}
+      DownloadToken__SigningKey: ${DOWNLOAD_TOKEN_SIGNING_KEY:-local-dev-download-token-signing-key-change-me-32chars}
+      DownloadToken__LifetimeMinutes: "15"
+      BlobStore__RootPath: "/app/data/statements"
+    ports:
+      # Host 5173 -> container 8080, so the same http://localhost:5173/... commands work
+      # whether the API runs via `dotnet run` or in Docker.
+      - "5173:8080"
+    volumes:
+      # Persist uploaded statement PDFs across container restarts.
+      - securestatements-blob-data:/app/data/statements
+
+volumes:
+  securestatements-db-data:
+  securestatements-blob-data:

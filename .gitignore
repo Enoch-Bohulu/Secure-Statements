@@ -1,0 +1,28 @@
+# Secrets — never commit the real .env (the template .env.example is fine)
+.env
+.env.*
+!.env.example
+
+# Build output
+**/bin/
+**/obj/
+[Bb]in/
+[Oo]bj/
+
+# Local runtime data (uploaded statement blobs)
+data/
+
+# Test output
+TestResults/
+[Tt]est[Rr]esults/
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+*.user
+.DS_Store
+
+# Logs
+**/*.log
+
